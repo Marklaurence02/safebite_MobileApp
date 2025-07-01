@@ -55,12 +55,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailOrUsernameController.clear();
         _passwordController.clear();
         
-        // Navigate to home page
+        // The user data returned from the API
+        final user = result['user'];
+
+        // Navigate to home page and pass the user data
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const SafeBiteHomePage()),
+          MaterialPageRoute(builder: (context) => SafeBiteHomePage(user: user)),
         );
       } else {
-        _showErrorDialog('Login Failed', result['message']);
+        _showErrorDialog('Login Failed', result['error'] ?? 'Invalid credentials');
       }
     } catch (e) {
       _showErrorDialog('Error', 'An unexpected error occurred: ${e.toString()}');

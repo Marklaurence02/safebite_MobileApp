@@ -182,4 +182,28 @@ class UserService {
       return false;
     }
   }
+
+  // Update a user's profile data
+  Future<Map<String, dynamic>> updateUser(String userId, Map<String, dynamic> userData) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(userData),
+      ).timeout(const Duration(seconds: 5));
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success']) {
+        return {'success': true, 'message': data['message']};
+      } else {
+        return {'success': false, 'message': data['message'] ?? 'Failed to update user'};
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: Please check your connection',
+      };
+    }
+  }
 } 

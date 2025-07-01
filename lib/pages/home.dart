@@ -36,13 +36,14 @@ class MyApp extends StatelessWidget {
           backgroundColor: Color(0xFF2196F3),
         ),
       ),
-      home: const SafeBiteHomePage(),
+      home: const SafeBiteHomePage(user: {}),
     );
   }
 }
 
 class SafeBiteHomePage extends StatefulWidget {
-  const SafeBiteHomePage({super.key});
+  final Map<String, dynamic> user;
+  const SafeBiteHomePage({super.key, required this.user});
 
   @override
   State<SafeBiteHomePage> createState() => _SafeBiteHomePageState();
@@ -309,15 +310,15 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
         onTap: (index) {
           if (index == 1) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => NotificationPage()),
+              MaterialPageRoute(builder: (context) => NotificationPage(user: widget.user)),
             );
           } else if (index == 2) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => AnalysisPage()),
+              MaterialPageRoute(builder: (context) => AnalysisPage(user: widget.user)),
             );
           } else if (index == 3) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => ProfilePage()),
+              MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)),
             );
           }
         },

@@ -4,13 +4,14 @@ import 'analysis.dart';
 import 'profile.dart';
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key});
+  final Map<String, dynamic> user;
+  const NotificationPage({super.key, required this.user});
   @override
   _NotificationPageState createState() => _NotificationPageState();
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  int _selectedIndex = 1;  // Set to 1 for notifications tab
+  final int _selectedIndex = 1;  // Set to 1 for notifications tab
 
   @override
   Widget build(BuildContext context) {
@@ -35,15 +36,15 @@ class _NotificationPageState extends State<NotificationPage> {
         onTap: (index) {
           if (index == 0) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const SafeBiteHomePage()),
+              MaterialPageRoute(builder: (context) => SafeBiteHomePage(user: widget.user)),
             );
           } else if (index == 2) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => AnalysisPage()),
+              MaterialPageRoute(builder: (context) => AnalysisPage(user: widget.user)),
             );
           } else if (index == 3) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => ProfilePage()),
+              MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)),
             );
           }
         },

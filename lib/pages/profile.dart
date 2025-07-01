@@ -1,29 +1,45 @@
 // pages/profile.dart
 
 import 'package:flutter/material.dart';
+import '../services/user_service.dart';
 import 'home.dart';
 import 'notification.dart';
 import 'analysis.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final Map<String, dynamic> user;
+  const ProfilePage({super.key, required this.user});
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  final _userService = UserService();
+  bool _isLoading = false;
+
   // Using TextEditingControllers for better control and to set initial values
-  final _firstNameController = TextEditingController(text: 'Juan');
-  final _lastNameController = TextEditingController(text: 'Dela Cruz');
-  final _usernameController = TextEditingController(text: 'juandc');
-  final _emailController = TextEditingController(text: 'juandelacruz@gmail.com');
-  final _contactNumberController = TextEditingController(text: '09123456789');
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _contactNumberController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Populate controllers with the logged-in user's data
+    _firstNameController.text = widget.user['first_name'] ?? '';
+    _lastNameController.text = widget.user['last_name'] ?? '';
+    _usernameController.text = widget.user['username'] ?? '';
+    _emailController.text = widget.user['email'] ?? '';
+    _contactNumberController.text = widget.user['contact_number']?.toString() ?? '';
+  }
 
   @override
   void dispose() {
@@ -37,12 +53,42 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  void _saveChanges() {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      // UI only, no database connection
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) {
+      return; // If form is not valid, do not proceed
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final Map<String, dynamic> updatedData = {
+      'first_name': _firstNameController.text,
+      'last_name': _lastNameController.text,
+      'username': _usernameController.text,
+      'email': _emailController.text,
+      'contact_number': _contactNumberController.text,
+    };
+    
+    // Only include the password if it has been changed
+    if (_passwordController.text.isNotEmpty) {
+      updatedData['password'] = _passwordController.text;
+    }
+
+    final userId = widget.user['user_id'].toString();
+    final result = await _userService.updateUser(userId, updatedData);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Changes Saved! (UI Only)')),
+        SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
       );
     }
   }
@@ -152,8 +198,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 elevation: 5,
               ),
-              onPressed: _saveChanges,
-              child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              onPressed: _isLoading ? null : _saveChanges,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Save Changes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 20),
           ],
@@ -174,15 +229,15 @@ class _ProfilePageState extends State<ProfilePage> {
         onTap: (index) {
           if (index == 0) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const SafeBiteHomePage()),
+              MaterialPageRoute(builder: (context) => SafeBiteHomePage(user: widget.user)),
             );
           } else if (index == 1) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const NotificationPage()),
+              MaterialPageRoute(builder: (context) => NotificationPage(user: widget.user)),
             );
           } else if (index == 2) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => AnalysisPage()),
+              MaterialPageRoute(builder: (context) => AnalysisPage(user: widget.user)),
             );
           }
         },
