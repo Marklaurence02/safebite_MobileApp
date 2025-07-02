@@ -2,18 +2,41 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db/db');
 
-// Recent Food Detections
+// Helper to get user_id from session token
+async function getUserIdFromSession(token) {
+    const [rows] = await db.query(
+        'SELECT user_id FROM sessions WHERE session_token = ? AND expires_at > NOW()',
+        [token]
+    );
+    return rows.length > 0 ? rows[0].user_id : null;
+}
+
+// Recent Food Detections (user-specific)
 router.get('/dashboard/recent-food', async (req, res) => {
     try {
-        const { date } = req.query;
-        let query = 'SELECT name, expiration_date FROM food_items';
-        let params = [];
-        if (date) {
-            query += ' WHERE expiration_date = ?';
-            params.push(date);
+        // Get session token from Authorization header
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.replace('Bearer ', '');
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'No session token provided' });
         }
-        query += ' ORDER BY expiration_date DESC LIMIT 10';
-        const [foods] = await db.query(query, params);
+        // Get user_id from session
+        const [sessionRows] = await db.query('SELECT user_id FROM sessions WHERE session_token = ? AND expires_at > NOW()', [token]);
+        if (!sessionRows.length) {
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+        }
+        const user_id = sessionRows[0].user_id;
+
+        // Get food items for this user's sensors
+        const [foods] = await db.query(`
+            SELECT f.name, f.expiration_date
+            FROM food_items f
+            JOIN sensor s ON f.sensor_id = s.sensor_id
+            WHERE s.user_id = ?
+            ORDER BY f.expiration_date DESC
+            LIMIT 10
+        `, [user_id]);
+
         const today = new Date();
         const result = foods.map(food => {
             const expDate = new Date(food.expiration_date);
@@ -34,14 +57,38 @@ router.get('/dashboard/recent-food', async (req, res) => {
 
 router.get('/dashboard/sensor-activity', async (req, res) => {
     try {
-        const { date, start, end } = req.query;
-        let query = 'SELECT COUNT(*) as count FROM readings';
-        let params = [];
+        const { date, start, end, user_id, chart } = req.query;
+
+        if (chart === '1') {
+            // Chart data: daily counts for this user (via sensor)
+            if (!user_id || !start || !end) {
+                return res.status(400).json({ success: false, error: 'user_id, start, and end are required for chart data' });
+            }
+            const query = `
+                SELECT DATE(r.timestamp) as date, COUNT(*) as count
+                FROM readings r
+                JOIN sensor s ON r.sensor_id = s.sensor_id
+                WHERE s.user_id = ? AND DATE(r.timestamp) BETWEEN ? AND ?
+                GROUP BY DATE(r.timestamp)
+                ORDER BY DATE(r.timestamp)
+            `;
+            const [rows] = await db.query(query, [user_id, start, end]);
+            return res.json({ success: true, data: rows || [] });
+        }
+
+        // Usage count for this user (via sensor)
+        let query = `
+            SELECT COUNT(*) as count
+            FROM readings r
+            JOIN sensor s ON r.sensor_id = s.sensor_id
+            WHERE s.user_id = ?
+        `;
+        let params = [user_id];
         if (date) {
-            query += ' WHERE DATE(timestamp) = ?';
+            query += ' AND DATE(r.timestamp) = ?';
             params.push(date);
         } else if (start && end) {
-            query += ' WHERE DATE(timestamp) BETWEEN ? AND ?';
+            query += ' AND DATE(r.timestamp) BETWEEN ? AND ?';
             params.push(start, end);
         }
         const [[result]] = await db.query(query, params);

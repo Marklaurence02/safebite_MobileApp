@@ -3,6 +3,14 @@ import 'package:flutter/material.dart';
 import 'pages/home.dart'; // Import the home page
 import 'services/user_service.dart';
 import 'forgot_password_screen.dart';
+import 'dart:convert';
+import 'services/session_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+const String baseUrl = 'http://10.0.2.2:3000/api';
+// Base URL for the Express backend when running on a website or local browser
+const String websiteBaseUrl = 'http://localhost:3000/api';
 
 // LoginScreen: Allows the user to log in to their account
 class LoginScreen extends StatefulWidget {
@@ -17,9 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailOrUsernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _userService = UserService();
+  final _sessionService = SessionService();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
+  String? sessionToken;
 
   @override
   void dispose() {
@@ -57,11 +67,27 @@ class _LoginScreenState extends State<LoginScreen> {
         
         // The user data returned from the API
         final user = result['user'];
+        print('User object after login: $user'); // Debug print
+        final userId = user['user_id'] ?? user['id'];
+        if (userId == null) {
+          _showErrorDialog('Login Failed', 'User ID not found in response.');
+          return;
+        }
+        final sessionResult = await _sessionService.createSession(userId);
+        if (sessionResult['success']) {
+          sessionToken = sessionResult['session_token'];
+          user['session_token'] = sessionToken;
 
-        // Navigate to home page and pass the user data
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => SafeBiteHomePage(user: user)),
-        );
+          // Save session token to shared preferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('session_token', sessionToken!);
+
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => SafeBiteHomePage(user: user)),
+          );
+        } else {
+          _showErrorDialog('Login Failed', sessionResult['error'] ?? 'Invalid session creation');
+        }
       } else {
         _showErrorDialog('Login Failed', result['error'] ?? 'Invalid credentials');
       }
@@ -104,75 +130,75 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Form(
               key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // App logo
-                  const SizedBox(height: 40),
-                  RichText(
-                    textAlign: TextAlign.center,
-                    text: const TextSpan(
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Safe',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        TextSpan(
-                          text: 'Bite',
-                          style: TextStyle(color: Color(0xFF7FA6C9)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Title
-                  const Text(
-                    'Login',
-                    textAlign: TextAlign.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // App logo
+                const SizedBox(height: 40),
+                RichText(
+                  textAlign: TextAlign.center,
+                  text: const TextSpan(
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
+                    children: [
+                      TextSpan(
+                        text: 'Safe',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      TextSpan(
+                        text: 'Bite',
+                        style: TextStyle(color: Color(0xFF7FA6C9)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 32),
+                ),
+                const SizedBox(height: 32),
+                // Title
+                const Text(
+                  'Login',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 32),
                   // Email or Username field
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
                       'Email or Username',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
-                  const SizedBox(height: 6),
+                ),
+                const SizedBox(height: 6),
                   TextFormField(
                     controller: _emailOrUsernameController,
-                    style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email or username';
                       }
                       return null;
                     },
-                    decoration: InputDecoration(
+                  decoration: InputDecoration(
                       hintText: 'Enter Email or Username',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide(color: Colors.white54),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide(color: Color(0xFF7FA6C9)),
-                      ),
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: Colors.white54),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: Color(0xFF7FA6C9)),
+                    ),
                       errorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(12)),
                         borderSide: BorderSide(color: Colors.red),
@@ -181,33 +207,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.all(Radius.circular(12)),
                         borderSide: BorderSide(color: Colors.red),
                       ),
-                    ),
                   ),
-                  const SizedBox(height: 18),
-                  // Password field
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Password',
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
+                ),
+                const SizedBox(height: 18),
+                // Password field
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Password',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
-                  const SizedBox(height: 6),
+                ),
+                const SizedBox(height: 6),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
                       }
                       return null;
                     },
-                    decoration: InputDecoration(
-                      hintText: 'Enter Password',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      filled: true,
-                      fillColor: Colors.transparent,
+                  decoration: InputDecoration(
+                    hintText: 'Enter Password',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: Colors.transparent,
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility : Icons.visibility_off,
@@ -219,14 +245,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide(color: Colors.white54),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide(color: Color(0xFF7FA6C9)),
-                      ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: Colors.white54),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(color: Color(0xFF7FA6C9)),
+                    ),
                       errorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(12)),
                         borderSide: BorderSide(color: Colors.red),
@@ -235,22 +261,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.all(Radius.circular(12)),
                         borderSide: BorderSide(color: Colors.red),
                       ),
-                    ),
                   ),
-                  const SizedBox(height: 28),
+                ),
+                const SizedBox(height: 28),
                   // Sign in Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2196F3),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        elevation: 0,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
                       ),
+                      elevation: 0,
+                    ),
                       onPressed: _isLoading ? null : _login,
                       child: _isLoading
                           ? const SizedBox(
@@ -271,24 +297,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
+                    onPressed: () {
                         // Navigate to ForgotPasswordScreen
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                        );
-                      },
-                      child: const Text(
+                      );
+                    },
+                    child: const Text(
                         'Forgot Password?',
                         style: TextStyle(
                           color: Colors.white70,
                           decoration: TextDecoration.underline,
                         ),
-                      ),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
+                ),
+                const SizedBox(height: 32),
+              ],
               ),
             ),
           ),

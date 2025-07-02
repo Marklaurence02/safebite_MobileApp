@@ -7,6 +7,7 @@ const notificationRouter = require('./routes/notification');
 const updateUserRouter = require('./routes/updateuser');
 const dashboardRouter = require('./routes/dashboard');
 const analyticsRouter = require('./routes/analytics');
+const sessionRouter = require('./routes/session');
 const PORT = process.env.PORT || 3000;
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api', notificationRouter);
 app.use('/api', updateUserRouter);
 app.use('/api', dashboardRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/session', sessionRouter);
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

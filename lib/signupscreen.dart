@@ -20,6 +20,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // Base URL for the Express backend when running on a website or local browser
+  static const String websiteBaseUrl = 'http://localhost:3000/api';
+
   @override
   void dispose() {
     _emailController.dispose();

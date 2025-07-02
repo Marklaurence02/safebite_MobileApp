@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'reset_password_screen.dart'; // We will create this next
 
+// Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+const String baseUrl = 'http://10.0.2.2:3000/api';
+// Base URL for the Express backend when running on a website or local browser
+const String websiteBaseUrl = 'http://localhost:3000/api';
+
 class OTPScreen extends StatefulWidget {
   final String email;
   const OTPScreen({super.key, required this.email});

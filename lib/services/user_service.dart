@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
   // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
   static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // Base URL for the Express backend when running on a website or local browser
+  static const String websiteBaseUrl = 'http://localhost:3000/api';
   
   // Validate email format
   bool isValidEmail(String email) {
@@ -51,8 +54,9 @@ class UserService {
       }
 
       // Make API call to register user
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
       final response = await http.post(
-        Uri.parse('$baseUrl/newuser'),
+        Uri.parse('$apiUrl/newuser'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -106,8 +110,9 @@ class UserService {
       }
 
       // Make API call to login user
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
       final response = await http.post(
-        Uri.parse('$baseUrl/login'),
+        Uri.parse('$apiUrl/login'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -142,8 +147,9 @@ class UserService {
   // Get all users (for testing)
   Future<Map<String, dynamic>> getAllUsers() async {
     try {
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
       final response = await http.get(
-        Uri.parse('$baseUrl/users'),
+        Uri.parse('$apiUrl/users'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -174,7 +180,8 @@ class UserService {
   Future<bool> isBackendAvailable() async {
     try {
       // We ping the /users endpoint as a simple way to check for a server response.
-      final response = await http.get(Uri.parse('$baseUrl/users')).timeout(const Duration(seconds: 3));
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.get(Uri.parse('$apiUrl/users')).timeout(const Duration(seconds: 3));
       // A 200 OK response means the server is up.
       return response.statusCode == 200;
     } catch (e) {
@@ -186,8 +193,9 @@ class UserService {
   // Update a user's profile data
   Future<Map<String, dynamic>> updateUser(String userId, Map<String, dynamic> userData) async {
     try {
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
       final response = await http.put(
-        Uri.parse('$baseUrl/users/$userId'),
+        Uri.parse('$apiUrl/users/$userId'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(userData),
       ).timeout(const Duration(seconds: 5));

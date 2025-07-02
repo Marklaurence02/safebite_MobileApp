@@ -6,6 +6,11 @@ import 'home.dart';
 import 'notification.dart';
 import 'profile.dart';
 
+// Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+const String baseUrl = 'http://10.0.2.2:3000/api';
+// Base URL for the Express backend when running on a website or local browser
+const String websiteBaseUrl = 'http://localhost:3000/api';
+
 class AnalysisPage extends StatefulWidget {
   final Map<String, dynamic> user;
   const AnalysisPage({super.key, required this.user});
@@ -37,7 +42,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF8BA3BF),
+                  backgroundColor: const Color(0xFF8BA3BF),
       appBar: AppBar(
         title: const Text('Analysis', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF0B1739),

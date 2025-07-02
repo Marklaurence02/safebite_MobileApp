@@ -1,14 +1,18 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AnalyticsService {
   // Base URL for the analytics endpoints
   static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // Base URL for the Express backend when running on a website or local browser
+  static const String websiteBaseUrl = 'http://localhost:3000/api';
 
   // Helper method to make GET requests
   Future<Map<String, dynamic>> _get(String endpoint) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/$endpoint')).timeout(const Duration(seconds: 5));
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.get(Uri.parse('$apiUrl/$endpoint')).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {

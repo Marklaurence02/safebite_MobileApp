@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'notification.dart';
 import 'analysis.dart';
 import 'profile.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+const String baseUrl = 'http://10.0.2.2:3000/api';
+// Base URL for the Express backend when running on a website or local browser
+const String websiteBaseUrl = 'http://localhost:3000/api';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -54,6 +64,170 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
   String selectedMonth = 'Jun 2025';
   final List<String> foods = ['Adobo', 'Sinigang', 'Tinola'];
   final List<String> months = ['Jun 2025'];
+
+  // Backend data
+  List<Map<String, dynamic>> recentFoodDetections = [];
+  bool isLoadingFood = true;
+  String foodError = '';
+
+  int sensorActivityCount = 0;
+  bool isLoadingSensor = true;
+  String sensorError = '';
+
+  List<Map<String, dynamic>> dailySensorData = [];
+  bool isLoadingChart = true;
+  String chartError = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRecentFoodDetections();
+    fetchSensorActivity();
+    fetchDailySensorData();
+  }
+
+  Future<void> fetchRecentFoodDetections() async {
+    setState(() {
+      isLoadingFood = true;
+      foodError = '';
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessionToken = prefs.getString('session_token');
+      if (sessionToken == null) {
+        setState(() {
+          foodError = 'Not logged in';
+          isLoadingFood = false;
+        });
+        return;
+      }
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.get(
+        Uri.parse('$apiUrl/dashboard/recent-food'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $sessionToken',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            recentFoodDetections = List<Map<String, dynamic>>.from(data['data']);
+            isLoadingFood = false;
+          });
+        } else {
+          setState(() {
+            foodError = 'Failed to load food data';
+            isLoadingFood = false;
+          });
+        }
+      } else {
+        setState(() {
+          foodError = 'Server error: ${response.statusCode}';
+          isLoadingFood = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        foodError = 'Error: ${e.toString()}';
+        isLoadingFood = false;
+      });
+    }
+  }
+
+  Future<void> fetchSensorActivity() async {
+    setState(() {
+      isLoadingSensor = true;
+      sensorError = '';
+    });
+    try {
+      final userId = widget.user['user_id'];
+      if (userId == null) {
+        setState(() {
+          sensorError = 'User ID not found';
+          isLoadingSensor = false;
+        });
+        return;
+      }
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.get(Uri.parse('$apiUrl/dashboard/sensor-activity?user_id=$userId'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            sensorActivityCount = data['usage_count'] ?? 0;
+            isLoadingSensor = false;
+          });
+        } else {
+          setState(() {
+            sensorError = 'Failed to load sensor data';
+            isLoadingSensor = false;
+          });
+        }
+      } else {
+        setState(() {
+          sensorError = 'Server error: ${response.statusCode}';
+          isLoadingSensor = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        sensorError = 'Error: ${e.toString()}';
+        isLoadingSensor = false;
+      });
+    }
+  }
+
+  Future<void> fetchDailySensorData() async {
+    setState(() {
+      isLoadingChart = true;
+      chartError = '';
+    });
+    try {
+      final userId = widget.user['user_id'];
+      if (userId == null) {
+        setState(() {
+          chartError = 'User ID not found';
+          isLoadingChart = false;
+        });
+        return;
+      }
+      final start = '2025-06-01'; // or dynamically from selectedMonth
+      final end = '2025-06-30';   // or dynamically from selectedMonth
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.get(
+        Uri.parse('$apiUrl/dashboard/sensor-activity?user_id=$userId&start=$start&end=$end&chart=1'),
+      );
+      if (response.statusCode == 200) {
+        print('Chart response: ${response.body}');
+        final data = json.decode(response.body);
+        final rawData = data['data'];
+        if (rawData != null && rawData is List) {
+          setState(() {
+            dailySensorData = List<Map<String, dynamic>>.from(rawData);
+            isLoadingChart = false;
+          });
+        } else {
+          setState(() {
+            dailySensorData = [];
+            chartError = 'No chart data available';
+            isLoadingChart = false;
+          });
+        }
+      } else {
+        setState(() {
+          chartError = 'Server error: ${response.statusCode}';
+          isLoadingChart = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        chartError = 'Error: ${e.toString()}';
+        isLoadingChart = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -182,42 +356,76 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                           children: [
                             Row(
                               children: [
-                                const Text('Score: ', style: TextStyle(color: Colors.white70)),
-                                const Text('100', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text('+10%', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                ),
+                                const Text('Usage Count: ', style: TextStyle(color: Colors.white70)),
+                                if (isLoadingSensor)
+                                  const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue))
+                                else if (sensorError.isNotEmpty)
+                                  Text(sensorError, style: const TextStyle(color: Colors.redAccent, fontSize: 12))
+                                else
+                                  Text(' $sensorActivityCount', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              height: 100,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0B1739),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.blue.withOpacity(0.15),
-                                    blurRadius: 16,
-                                    offset: Offset(0, 8),
+                              height: 200,
+                              padding: EdgeInsets.all(8),
+                              child: isLoadingChart
+                                  ? Center(child: CircularProgressIndicator())
+                                  : chartError.isNotEmpty
+                                      ? Center(child: Text(chartError, style: TextStyle(color: Colors.red)))
+                                      : (dailySensorData.isEmpty
+                                          ? Center(child: Text('No data', style: TextStyle(color: Colors.white54)))
+                                          : LineChart(
+                                              LineChartData(
+                                                gridData: FlGridData(show: false),
+                                                titlesData: FlTitlesData(
+                                                  leftTitles: AxisTitles(
+                                                    sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                                                  ),
+                                                  bottomTitles: AxisTitles(
+                                                    sideTitles: SideTitles(
+                                                      showTitles: true,
+                                                      getTitlesWidget: (value, meta) {
+                                                        int idx = value.toInt();
+                                                        if (idx % 7 == 0 && idx < dailySensorData.length) {
+                                                          return Text(
+                                                            dailySensorData[idx]['date'].substring(5), // MM-DD
+                                                            style: TextStyle(color: Colors.white54, fontSize: 10),
+                                                          );
+                                                        }
+                                                        return Container();
+                                                      },
+                                                      reservedSize: 32,
+                                                    ),
+                                                  ),
+                                                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                                ),
+                                                borderData: FlBorderData(show: false),
+                                                minX: 0,
+                                                maxX: (dailySensorData.length - 1).toDouble(),
+                                                minY: 0,
+                                                maxY: dailySensorData.isNotEmpty
+                                                    ? dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 10
+                                                    : 10,
+                                                lineBarsData: [
+                                                  LineChartBarData(
+                                                    spots: [
+                                                      for (int i = 0; i < dailySensorData.length; i++)
+                                                        FlSpot(i.toDouble(), (dailySensorData[i]['count'] as num).toDouble())
+                                                    ],
+                                                    isCurved: true,
+                                                    color: Colors.cyanAccent,
+                                                    barWidth: 3,
+                                                    belowBarData: BarAreaData(
+                                                      show: true,
+                                                      color: Colors.cyanAccent.withOpacity(0.15),
+                                                    ),
+                                                    dotData: FlDotData(show: false),
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: Text('Line Chart Placeholder', style: TextStyle(color: Colors.white38)),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Align(
-                              alignment: Alignment.centerRight,
-                              child: Text('June 1 - June 24', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                            )),
                             ),
                           ],
                         ),
@@ -282,7 +490,48 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                               ],
                             ),
                             const Divider(color: Colors.white12),
-                            ..._recentFoodDetectionsRows(),
+                            ...(
+                              isLoadingFood
+                                ? [const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue)),
+                                  )]
+                                : foodError.isNotEmpty
+                                  ? [Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(foodError, style: const TextStyle(color: Colors.redAccent)),
+                                    )]
+                                  : recentFoodDetections.isEmpty
+                                    ? [const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Text('No recent food detections.', style: TextStyle(color: Colors.white70)),
+                                      )]
+                                    : recentFoodDetections.map((row) {
+                                        final statusColors = {
+                                          'Good': Colors.green,
+                                          'Spoilt': Colors.red,
+                                          'Spoilt warning': Colors.yellow,
+                                        };
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                          child: Row(
+                                            children: [
+                                              Expanded(child: Text(row['food'] ?? '', style: const TextStyle(color: Colors.white))),
+                                              Expanded(child: Text(row['date'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 10))),
+                                              Expanded(
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.circle, color: statusColors[row['status']] ?? Colors.grey, size: 11),
+                                                    const SizedBox(width: 6),
+                                                    Text(row['status'] ?? '', style: TextStyle(color: statusColors[row['status']] ?? Colors.grey, fontWeight: FontWeight.bold, fontSize: 9)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList()
+                            ),
                           ],
                         ),
                       ),
@@ -363,45 +612,6 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
         ),
       ),
     );
-  }
-
-  List<Widget> _recentFoodDetectionsRows() {
-    final rows = [
-      ['Adobo', 'Jun 1, 2025', 'Good'],
-      ['Sinigang', 'Jun 3, 2025', 'Spoilt'],
-      ['Tinola', 'Jun 8, 2025', 'Good'],
-      ['Adobo', 'Jun 8, 2025', 'Spoilt warning'],
-    ];
-    final statusColors = {
-      'Good': Colors.green,
-      'Spoilt': Colors.red,
-      'Spoilt warning': Colors.yellow,
-    };
-    final statusTextColors = {
-      'Good': Colors.green,
-      'Spoilt': Colors.red,
-      'Spoilt warning': Colors.yellow,
-    };
-    return rows.map((row) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0),
-        child: Row(
-          children: [
-            Expanded(child: Text(row[0], style: const TextStyle(color: Colors.white))),
-            Expanded(child: Text(row[1], style: const TextStyle(color: Colors.white,fontSize: 10))),
-            Expanded(
-              child: Row(
-                children: [
-                  Icon(Icons.circle, color: statusColors[row[2]], size: 11),
-                  const SizedBox(width: 6),
-                  Text(row[2], style: TextStyle(color: statusTextColors[row[2]], fontWeight: FontWeight.bold, fontSize: 9)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
   }
 }
 

@@ -5,6 +5,17 @@ import '../services/user_service.dart';
 import 'home.dart';
 import 'notification.dart';
 import 'analysis.dart';
+import '../services/session_service.dart';
+import '../loginscreen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+const String baseUrl = 'http://10.0.2.2:3000/api';
+// Base URL for the Express backend when running on a website or local browser
+const String websiteBaseUrl = 'http://localhost:3000/api';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -16,6 +27,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _userService = UserService();
+  final _sessionService = SessionService();
   bool _isLoading = false;
 
   // Using TextEditingControllers for better control and to set initial values
@@ -30,6 +42,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  String? _sessionToken; // Store the session token if available
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +53,8 @@ class _ProfilePageState extends State<ProfilePage> {
     _usernameController.text = widget.user['username'] ?? '';
     _emailController.text = widget.user['email'] ?? '';
     _contactNumberController.text = widget.user['contact_number']?.toString() ?? '';
+    // Optionally, get the session token from user or app state
+    _sessionToken = widget.user['session_token'];
   }
 
   @override
@@ -75,8 +91,12 @@ class _ProfilePageState extends State<ProfilePage> {
       updatedData['password'] = _passwordController.text;
     }
 
-    final userId = widget.user['user_id'].toString();
-    final result = await _userService.updateUser(userId, updatedData);
+    final userId = widget.user['user_id'] ?? widget.user['id'];
+    if (userId == null) {
+      _showErrorDialog('Login Failed', 'User ID not found in response.');
+      return;
+    }
+    final result = await _userService.updateUser(userId.toString(), updatedData);
 
     setState(() {
       _isLoading = false;
@@ -93,10 +113,42 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _logout() async {
+    if (_sessionToken == null) {
+      // If no session token, just go to login
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+      return;
+    }
+    setState(() { _isLoading = true; });
+
+    // Call the backend to delete the session
+    final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+    final response = await http.delete(
+      Uri.parse('$apiUrl/session/delete'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'session_token': _sessionToken}),
+    );
+
+    setState(() { _isLoading = false; });
+
+    // Remove session token from shared preferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('session_token');
+
+    // Regardless of result, navigate to login
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF8BA3BF),
+            backgroundColor: const Color(0xFF8BA3BF),
       appBar: AppBar(
         title: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF0B1739),
@@ -104,10 +156,10 @@ class _ProfilePageState extends State<ProfilePage> {
         automaticallyImplyLeading: false, // Removes back button
       ),
       body: Form(
-        key: _formKey,
+          key: _formKey,
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-          children: [
+            children: [
             // User Avatar section
             Center(
               child: CircleAvatar(
@@ -117,7 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Icons.person,
                   size: 60,
                   color: const Color(0xFF0B1739).withOpacity(0.7),
-                ),
+              ),
               ),
             ),
             const SizedBox(height: 24),
@@ -177,13 +229,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       label: 'Confirm New Password',
                       isObscured: _obscureConfirmPassword,
                       toggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                      validator: (value) {
+                validator: (value) {
                         if (value != _passwordController.text) {
                           return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
+                  }
+                  return null;
+                },
+              ),
                   ],
                 ),
               ),
@@ -191,13 +243,13 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 32),
 
             // Save Button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0B1739),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 elevation: 5,
-              ),
+                ),
               onPressed: _isLoading ? null : _saveChanges,
               child: _isLoading
                   ? const SizedBox(
@@ -209,7 +261,28 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     )
                   : const Text('Save Changes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            ),
+              ),
+            const SizedBox(height: 20),
+            // Logout Button
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                elevation: 5,
+              ),
+              onPressed: _isLoading ? null : _logout,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Logout', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
             const SizedBox(height: 20),
           ],
         ),
@@ -318,4 +391,25 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<String?> getSessionToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('session_token');
 }
