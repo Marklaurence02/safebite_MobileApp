@@ -73,7 +73,26 @@ router.get('/dashboard/sensor-activity', async (req, res) => {
                 ORDER BY DATE(r.timestamp)
             `;
             const [rows] = await db.query(query, [user_id, start, end]);
-            return res.json({ success: true, data: rows || [] });
+            // Fill missing days with count: 0
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            const result = [];
+            let hasData = rows.length > 0;
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().slice(0, 10);
+                const found = rows.find(r => r.date === dateStr);
+                result.push({ date: dateStr, count: found ? found.count : 0 });
+            }
+            // If no data, return mock data like analytics.js
+            if (!hasData) {
+                const days = Math.floor((endDate - startDate) / (1000*60*60*24)) + 1;
+                const mockData = Array.from({ length: days }, (_, i) => ({
+                    date: new Date(startDate.getTime() + i * 86400000).toISOString().slice(0, 10),
+                    count: Math.floor(Math.random() * 100)
+                }));
+                return res.json({ success: true, data: mockData });
+            }
+            return res.json({ success: true, data: result });
         }
 
         // Usage count for this user (via sensor)
@@ -96,6 +115,27 @@ router.get('/dashboard/sensor-activity', async (req, res) => {
             success: true,
             usage_count: result.count
         });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get('/dashboard/readings-date-range', async (req, res) => {
+    try {
+        const { user_id } = req.query;
+        if (!user_id) {
+            return res.status(400).json({ success: false, error: 'user_id is required' });
+        }
+        const query = `
+            SELECT 
+                MIN(DATE(r.timestamp)) as min_date, 
+                MAX(DATE(r.timestamp)) as max_date
+            FROM readings r
+            JOIN sensor s ON r.sensor_id = s.sensor_id
+            WHERE s.user_id = ?
+        `;
+        const [[result]] = await db.query(query, [user_id]);
+        res.json({ success: true, min_date: result.min_date, max_date: result.max_date });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

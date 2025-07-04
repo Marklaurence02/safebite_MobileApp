@@ -42,7 +42,31 @@ router.get('/sensor-activity', (req, res) => {
         change: 10,
         dataPoints: generateMonthlyData(30, 150), // 30 days, max 150 activities/day
     };
-    res.json({ success: true, data: chartData });
+
+    // Find the first and last month with data
+    let firstMonth = null;
+    let lastMonth = null;
+    const monthToValue = {};
+    for (let i = 0; i < chartData.dataPoints.length; i++) {
+        const date = new Date(2025, 0, 1 + i).toISOString().split('T')[0];
+        const monthIdx = parseInt(date.split('-')[1]) - 1;
+        monthToValue[monthIdx] = chartData.dataPoints[i];
+        if (firstMonth === null || monthIdx < firstMonth) firstMonth = monthIdx;
+        if (lastMonth === null || monthIdx > lastMonth) lastMonth = monthIdx;
+    }
+    firstMonth ??= 0;
+    lastMonth ??= 11;
+
+    const spots = [];
+    for (let m = 0; m < 12; m++) {
+        let y = 0;
+        if (m >= firstMonth && m <= lastMonth) {
+            y = monthToValue[m] ?? 0;
+        }
+        spots.push({ x: m, y });
+    }
+
+    res.json({ success: true, data: { spots } });
 });
 
 
@@ -58,7 +82,31 @@ router.get('/food-risk', (req, res) => {
         change: -50,
         dataPoints: generateMonthlyData(30, 50), // 30 days, max risk level 50
     };
-    res.json({ success: true, data: chartData });
+
+    // Find the first and last month with data
+    let firstMonth = null;
+    let lastMonth = null;
+    const monthToValue = {};
+    for (let i = 0; i < chartData.dataPoints.length; i++) {
+        const date = new Date(2025, 0, 1 + i).toISOString().split('T')[0];
+        const monthIdx = parseInt(date.split('-')[1]) - 1;
+        monthToValue[monthIdx] = chartData.dataPoints[i];
+        if (firstMonth === null || monthIdx < firstMonth) firstMonth = monthIdx;
+        if (lastMonth === null || monthIdx > lastMonth) lastMonth = monthIdx;
+    }
+    firstMonth ??= 0;
+    lastMonth ??= 11;
+
+    const spots = [];
+    for (let m = 0; m < 12; m++) {
+        let y = 0;
+        if (m >= firstMonth && m <= lastMonth) {
+            y = monthToValue[m] ?? 0;
+        }
+        spots.push({ x: m, y });
+    }
+
+    res.json({ success: true, data: { spots } });
 });
 
 

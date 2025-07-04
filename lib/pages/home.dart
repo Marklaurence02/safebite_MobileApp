@@ -60,9 +60,8 @@ class SafeBiteHomePage extends StatefulWidget {
 }
 
 class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
-  String selectedFood = 'Adobo';
+  String selectedFood = '';
   String selectedMonth = 'Jun 2025';
-  final List<String> foods = ['Adobo', 'Sinigang', 'Tinola'];
   final List<String> months = ['Jun 2025'];
 
   // Backend data
@@ -83,7 +82,7 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
     super.initState();
     fetchRecentFoodDetections();
     fetchSensorActivity();
-    fetchDailySensorData();
+    fetchAndSetLatestMonth();
   }
 
   Future<void> fetchRecentFoodDetections() async {
@@ -229,8 +228,102 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
     }
   }
 
+  Future<void> fetchDailySensorDataForRange(String start, String end) async {
+    setState(() {
+      isLoadingChart = true;
+      chartError = '';
+    });
+    try {
+      final userId = widget.user['user_id'];
+      print('user_id: $userId');
+      print('start: $start, end: $end');
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final url = '$apiUrl/dashboard/sensor-activity?user_id=$userId&start=$start&end=$end&chart=1';
+      print('API URL: $url');
+      final response = await http.get(Uri.parse(url));
+      print('Response: ${response.body}');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final rawData = data['data'];
+        if (rawData != null && rawData is List) {
+          setState(() {
+            dailySensorData = List<Map<String, dynamic>>.from(rawData);
+            isLoadingChart = false;
+          });
+        } else {
+          setState(() {
+            dailySensorData = [];
+            chartError = 'No chart data available';
+            isLoadingChart = false;
+          });
+        }
+      } else {
+        setState(() {
+          chartError = 'Server error: \\${response.statusCode}';
+          isLoadingChart = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        chartError = 'Error: \\${e.toString()}';
+        isLoadingChart = false;
+      });
+    }
+  }
+
+  Future<void> fetchAndSetLatestMonth() async {
+    final userId = widget.user['user_id'];
+    if (userId == null) return;
+    final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+    final response = await http.get(
+      Uri.parse('$apiUrl/dashboard/readings-date-range?user_id=$userId'),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final maxDate = data['max_date']; // e.g., "2025-07-03"
+      if (maxDate != null) {
+        final dt = DateTime.parse(maxDate);
+        final monthLabel = '${_monthName(dt.month)} ${dt.year}';
+        setState(() {
+          selectedMonth = monthLabel;
+          months.clear();
+          months.add(monthLabel);
+        });
+        // Now fetch chart data for this month:
+        final start = DateTime(dt.year, dt.month, 1).toIso8601String().substring(0, 10);
+        final end = DateTime(dt.year, dt.month + 1, 0).toIso8601String().substring(0, 10);
+        fetchDailySensorDataForRange(start, end);
+      }
+    }
+  }
+
+  String _monthName(int month) {
+    const names = [ '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
+    return names[month];
+  }
+
+  void onMonthChanged(String monthLabel) {
+    setState(() {
+      selectedMonth = monthLabel;
+    });
+    final parts = monthLabel.split(' ');
+    final monthNum = _monthNum(parts[0]);
+    final year = int.parse(parts[1]);
+    final start = DateTime(year, monthNum, 1).toIso8601String().substring(0, 10);
+    final end = DateTime(year, monthNum + 1, 0).toIso8601String().substring(0, 10);
+    fetchDailySensorDataForRange(start, end);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Build food options from recentFoodDetections
+    final List<String> foodOptions = recentFoodDetections.isNotEmpty
+        ? recentFoodDetections.map((e) => e['food']?.toString() ?? '').toSet().toList()
+        : [];
+    // Ensure selectedFood is valid
+    if (selectedFood.isEmpty && foodOptions.isNotEmpty) {
+      selectedFood = foodOptions.first;
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF8BA3BF),
       appBar: AppBar(
@@ -281,7 +374,7 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                           dropdownColor: const Color(0xFF23242B),
                           style: const TextStyle(color: Colors.white),
                           underline: const SizedBox(),
-                          items: foods.map((food) => DropdownMenuItem(
+                          items: foodOptions.map((food) => DropdownMenuItem(
                             value: food,
                             child: Text(food),
                           )).toList(),
@@ -328,19 +421,20 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Sensor activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                        DropdownButton<String>(
-                          value: selectedMonth,
-                          dropdownColor: const Color(0xFF23242B),
-                          style: const TextStyle(color: Colors.white),
-                          underline: const SizedBox(),
-                          items: months.map((month) => DropdownMenuItem(
-                            value: month,
-                            child: Text(month),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedMonth = value!;
-                            });
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white24),
+                            backgroundColor: const Color(0xFF232B3E),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.calendar_today_outlined, color: Colors.white70, size: 18),
+                          label: Text(
+                            selectedMonth,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          onPressed: () {
+                            // Optionally show a month picker or do nothing for now
                           },
                         ),
                       ],
@@ -362,70 +456,145 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                                 else if (sensorError.isNotEmpty)
                                   Text(sensorError, style: const TextStyle(color: Colors.redAccent, fontSize: 12))
                                 else
-                                  Text(' $sensorActivityCount', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                                  Text('$sensorActivityCount', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              height: 200,
-                              padding: EdgeInsets.all(8),
+                              height: 180,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF181A20),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               child: isLoadingChart
-                                  ? Center(child: CircularProgressIndicator())
+                                  ? const Center(child: CircularProgressIndicator())
                                   : chartError.isNotEmpty
-                                      ? Center(child: Text(chartError, style: TextStyle(color: Colors.red)))
-                                      : (dailySensorData.isEmpty
-                                          ? Center(child: Text('No data', style: TextStyle(color: Colors.white54)))
-                                          : LineChart(
-                                              LineChartData(
-                                                gridData: FlGridData(show: false),
-                                                titlesData: FlTitlesData(
-                                                  leftTitles: AxisTitles(
-                                                    sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                                      ? Center(child: Text(chartError, style: const TextStyle(color: Colors.red)))
+                                      : dailySensorData.isEmpty
+                                          ? const Center(child: Text('No data', style: TextStyle(color: Colors.white54)))
+                                          : Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                                              child: LineChart(
+                                                LineChartData(
+                                                  gridData: FlGridData(
+                                                    show: true,
+                                                    drawVerticalLine: true,
+                                                    horizontalInterval: 1,
+                                                    verticalInterval: 1,
+                                                    getDrawingHorizontalLine: (value) {
+                                                      return const FlLine(
+                                                        color: Color(0xff37434d),
+                                                        strokeWidth: 1,
+                                                      );
+                                                    },
+                                                    getDrawingVerticalLine: (value) {
+                                                      return const FlLine(
+                                                        color: Color(0xff37434d),
+                                                        strokeWidth: 1,
+                                                      );
+                                                    },
                                                   ),
-                                                  bottomTitles: AxisTitles(
-                                                    sideTitles: SideTitles(
-                                                      showTitles: true,
-                                                      getTitlesWidget: (value, meta) {
-                                                        int idx = value.toInt();
-                                                        if (idx % 7 == 0 && idx < dailySensorData.length) {
+                                                  titlesData: FlTitlesData(
+                                                    show: true,
+                                                    rightTitles: const AxisTitles(
+                                                      sideTitles: SideTitles(showTitles: false),
+                                                    ),
+                                                    topTitles: const AxisTitles(
+                                                      sideTitles: SideTitles(showTitles: false),
+                                                    ),
+                                                    bottomTitles: AxisTitles(
+                                                      sideTitles: SideTitles(
+                                                        showTitles: true,
+                                                        reservedSize: 30,
+                                                        interval: 1,
+                                                        getTitlesWidget: (value, meta) {
+                                                          int dayIdx = value.toInt();
+                                                          final daysInMonth = DateTime(int.parse(selectedMonth.split(' ')[1]), _monthNum(selectedMonth.split(' ')[0]) + 1, 0).day;
+                                                          if (dayIdx == 1 || dayIdx == daysInMonth || dayIdx % 5 == 0) {
+                                                            return SideTitleWidget(
+                                                              axisSide: meta.axisSide,
+                                                              child: Text(
+                                                                dayIdx.toString(),
+                                                                style: const TextStyle(
+                                                                  fontWeight: FontWeight.bold,
+                                                                  fontSize: 12,
+                                                                  color: Colors.white,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          }
+                                                          return const SizedBox.shrink();
+                                                        },
+                                                      ),
+                                                    ),
+                                                    leftTitles: AxisTitles(
+                                                      sideTitles: SideTitles(
+                                                        showTitles: true,
+                                                        interval: 1,
+                                                        getTitlesWidget: (value, meta) {
                                                           return Text(
-                                                            dailySensorData[idx]['date'].substring(5), // MM-DD
-                                                            style: TextStyle(color: Colors.white54, fontSize: 10),
+                                                            value.toInt().toString(),
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 12,
+                                                              color: Colors.white,
+                                                            ),
                                                           );
-                                                        }
-                                                        return Container();
-                                                      },
-                                                      reservedSize: 32,
+                                                        },
+                                                        reservedSize: 42,
+                                                      ),
                                                     ),
                                                   ),
-                                                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                                ),
-                                                borderData: FlBorderData(show: false),
-                                                minX: 0,
-                                                maxX: (dailySensorData.length - 1).toDouble(),
-                                                minY: 0,
-                                                maxY: dailySensorData.isNotEmpty
-                                                    ? dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 10
-                                                    : 10,
-                                                lineBarsData: [
-                                                  LineChartBarData(
-                                                    spots: [
-                                                      for (int i = 0; i < dailySensorData.length; i++)
-                                                        FlSpot(i.toDouble(), (dailySensorData[i]['count'] as num).toDouble())
-                                                    ],
-                                                    isCurved: true,
-                                                    color: Colors.cyanAccent,
-                                                    barWidth: 3,
-                                                    belowBarData: BarAreaData(
-                                                      show: true,
-                                                      color: Colors.cyanAccent.withOpacity(0.15),
-                                                    ),
-                                                    dotData: FlDotData(show: false),
+                                                  borderData: FlBorderData(
+                                                    show: true,
+                                                    border: Border.all(color: const Color(0xff37434d)),
+                                                  ),
+                                                  minX: 1,
+                                                  maxX: DateTime(int.parse(selectedMonth.split(' ')[1]), _monthNum(selectedMonth.split(' ')[0]) + 1, 0).day.toDouble(),
+                                                  minY: 0,
+                                                  maxY: dailySensorData.isNotEmpty
+                                                      ? dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 1
+                                                      : 1,
+                                                  lineBarsData: [
+                                                    LineChartBarData(
+                                                      spots: [
+                                                        for (int d = 1; d <= DateTime(int.parse(selectedMonth.split(' ')[1]), _monthNum(selectedMonth.split(' ')[0]) + 1, 0).day; d++)
+                                                          FlSpot(
+                                                            d.toDouble(),
+                                                            (() {
+                                                              final entry = dailySensorData.firstWhere(
+                                                                (e) {
+                                                                  final dt = DateTime.parse(e['date']);
+                                                                  return dt.day == d && dt.month == _monthNum(selectedMonth.split(' ')[0]) && dt.year == int.parse(selectedMonth.split(' ')[1]);
+                                                                },
+                                                                orElse: () => {},
+                                                              );
+                                                              return entry.isNotEmpty ? (entry['count'] as num).toDouble() : 0.0;
+                                                            })(),
+                                                          )
+                                                      ],
+                                                      isCurved: true,
+                                                      gradient: const LinearGradient(
+                                                        colors: [Color(0xff23b6e6), Color(0xff02d39a)],
+                                                      ),
+                                                      barWidth: 5,
+                                                      isStrokeCapRound: true,
+                                                      dotData: const FlDotData(show: false),
+                                                      belowBarData: BarAreaData(
+                                                        show: true,
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            const Color(0xff23b6e6).withOpacity(0.3),
+                                                            const Color(0xff02d39a).withOpacity(0.3),
+                                                          ],
+                                                        ),
+                                                      ),
                                   ),
                                 ],
                               ),
-                                            )),
+                              ),
+                            ),
                             ),
                           ],
                         ),
@@ -457,19 +626,20 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Recent Food Detections', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-                        DropdownButton<String>(
-                          value: selectedMonth,
-                          dropdownColor: const Color(0xFF23242B),
-                          style: const TextStyle(color: Colors.white),
-                          underline: const SizedBox(),
-                          items: months.map((month) => DropdownMenuItem(
-                            value: month,
-                            child: Text(month),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedMonth = value!;
-                            });
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white24),
+                            backgroundColor: const Color(0xFF232B3E),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.calendar_today_outlined, color: Colors.white70, size: 18),
+                          label: Text(
+                            selectedMonth,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                          ),
+                          onPressed: () {
+                            // Optionally show a month picker or do nothing for now
                           },
                         ),
                       ],
@@ -612,6 +782,11 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
         ),
       ),
     );
+  }
+
+  int _monthNum(String name) {
+    const names = [ '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ];
+    return names.indexOf(name);
   }
 }
 
