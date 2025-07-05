@@ -196,7 +196,7 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
       final end = '2025-06-30';   // or dynamically from selectedMonth
       final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
       final response = await http.get(
-        Uri.parse('$apiUrl/dashboard/sensor-activity?user_id=$userId&start=$start&end=$end&chart=1'),
+        Uri.parse('$apiUrl/dashboard/?user_id=$userId&start=$start&end=$end&chart=1'),
       );
       if (response.statusCode == 200) {
         print('Chart response: ${response.body}');
@@ -554,8 +554,8 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                                                   maxX: DateTime(int.parse(selectedMonth.split(' ')[1]), _monthNum(selectedMonth.split(' ')[0]) + 1, 0).day.toDouble(),
                                                   minY: 0,
                                                   maxY: dailySensorData.isNotEmpty
-                                                      ? dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 1
-                                                      : 1,
+                                                      ? ((dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b)) < 3 ? 3 : dailySensorData.map((e) => (e['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b) + 1)
+                                                      : 3,
                                                   lineBarsData: [
                                                     LineChartBarData(
                                                       spots: [
@@ -590,14 +590,13 @@ class _SafeBiteHomePageState extends State<SafeBiteHomePage> {
                                                           ],
                                                         ),
                                                       ),
-                                  ),
-                                ],
-                              ),
-                              ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
                             ),
-                            ),
-                          ],
-                        ),
+                                                  ],                        ),
                       ),
                     ),
                   ],

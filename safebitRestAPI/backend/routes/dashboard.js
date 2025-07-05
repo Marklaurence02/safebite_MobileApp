@@ -57,15 +57,27 @@ router.get('/dashboard/recent-food', async (req, res) => {
 
 router.get('/dashboard/sensor-activity', async (req, res) => {
     try {
-        const { date, start, end, user_id, chart } = req.query;
-
+        let { date, start, end, user_id, chart } = req.query;
+        // If user_id is not provided, get it from session token
+        if (!user_id) {
+            const authHeader = req.headers.authorization || '';
+            const token = authHeader.replace('Bearer ', '');
+            if (!token) {
+                return res.status(401).json({ success: false, error: 'No session token provided' });
+            }
+            const [sessionRows] = await db.query('SELECT user_id FROM sessions WHERE session_token = ? AND expires_at > NOW()', [token]);
+            if (!sessionRows.length) {
+                return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+            }
+            user_id = sessionRows[0].user_id;
+        }
         if (chart === '1') {
             // Chart data: daily counts for this user (via sensor)
             if (!user_id || !start || !end) {
                 return res.status(400).json({ success: false, error: 'user_id, start, and end are required for chart data' });
             }
             const query = `
-                SELECT DATE(r.timestamp) as date, COUNT(*) as count
+                SELECT DATE_FORMAT(r.timestamp, '%Y-%m-%d') as date, COUNT(*) as count
                 FROM readings r
                 JOIN sensor s ON r.sensor_id = s.sensor_id
                 WHERE s.user_id = ? AND DATE(r.timestamp) BETWEEN ? AND ?
@@ -77,20 +89,10 @@ router.get('/dashboard/sensor-activity', async (req, res) => {
             const startDate = new Date(start);
             const endDate = new Date(end);
             const result = [];
-            let hasData = rows.length > 0;
             for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 const dateStr = d.toISOString().slice(0, 10);
                 const found = rows.find(r => r.date === dateStr);
                 result.push({ date: dateStr, count: found ? found.count : 0 });
-            }
-            // If no data, return mock data like analytics.js
-            if (!hasData) {
-                const days = Math.floor((endDate - startDate) / (1000*60*60*24)) + 1;
-                const mockData = Array.from({ length: days }, (_, i) => ({
-                    date: new Date(startDate.getTime() + i * 86400000).toISOString().slice(0, 10),
-                    count: Math.floor(Math.random() * 100)
-                }));
-                return res.json({ success: true, data: mockData });
             }
             return res.json({ success: true, data: result });
         }

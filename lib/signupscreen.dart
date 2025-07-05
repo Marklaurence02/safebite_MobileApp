@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'services/user_service.dart';
-import 'loginscreen.dart';
 
 // SignUpScreen: Allows the user to create a new account
 class SignUpScreen extends StatefulWidget {
@@ -86,10 +85,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // Redirect to login screen after successful registration
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                );
               },
               child: const Text('OK'),
             ),
