@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/user_service.dart';
+import 'loginscreen.dart';
 
 // SignUpScreen: Allows the user to create a new account
 class SignUpScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscureConfirmPassword = true;
 
   // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'http://192.168.16.100:3000/api';
   // Base URL for the Express backend when running on a website or local browser
   static const String websiteBaseUrl = 'http://localhost:3000/api';
 
@@ -85,6 +86,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                // Redirect to login screen after successful registration
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
               },
               child: const Text('OK'),
             ),

@@ -9,6 +9,8 @@ const dashboardRouter = require('./routes/dashboard');
 const analyticsRouter = require('./routes/analytics');
 const sessionRouter = require('./routes/session');
 const PORT = process.env.PORT || 3000;
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 
@@ -31,6 +33,14 @@ app.use('/api', updateUserRouter);
 app.use('/api', dashboardRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/session', sessionRouter);
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'dinewatchph@gmail.com',
+    pass: 'aoox zrsp ugcq jpun' // Use the app password from Google, NOT your real password
+  }
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
   // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'http://192.168.16.100:3000/api';
   // Base URL for the Express backend when running on a website or local browser
   static const String websiteBaseUrl = 'http://localhost:3000/api';
   
@@ -212,6 +212,28 @@ class UserService {
         'success': false,
         'message': 'Network error: Please check your connection',
       };
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    try {
+      final apiUrl = kIsWeb ? websiteBaseUrl : baseUrl;
+      final response = await http.post(
+        Uri.parse('$apiUrl/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'newPassword': newPassword}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'message': data['message']};
+      } else {
+        return {'success': false, 'message': data['error'] ?? 'Failed to reset password'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: Please try again'};
     }
   }
 } 

@@ -8,7 +8,7 @@ import 'services/session_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-const String baseUrl = 'http://10.0.2.2:3000/api';
+const String baseUrl = 'http://192.168.16.100:3000:3000/api';
 // Base URL for the Express backend when running on a website or local browser
 const String websiteBaseUrl = 'http://localhost:3000/api';
 
