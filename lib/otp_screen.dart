@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-const String baseUrl = 'http://192.168.16.100:3000/api';
+const String baseUrl = 'http://192.168.100.128:3000/api';
 // Base URL for the Express backend when running on a website or local browser
 const String websiteBaseUrl = 'http://localhost:3000/api';
 
@@ -65,8 +65,8 @@ class _OTPScreenState extends State<OTPScreen> {
         );
         final data = jsonDecode(response.body);
         if (response.statusCode == 200 && data['success'] == true) {
-          Navigator.push(
-            context,
+      Navigator.push(
+        context,
             MaterialPageRoute(builder: (context) => ResetPasswordScreen(email: widget.email)),
           );
         } else {
@@ -109,13 +109,13 @@ class _OTPScreenState extends State<OTPScreen> {
 
   Widget _buildOtpBox(int index) {
     return SizedBox(
-      width: 50,
-      height: 50,
+      width: 45,
+      height: 45,
       child: TextFormField(
         controller: _otpControllers[index],
         focusNode: _focusNodes[index],
         onChanged: (value) => _onOtpChanged(value, index),
-        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
         inputFormatters: [
@@ -133,6 +133,7 @@ class _OTPScreenState extends State<OTPScreen> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
             borderSide: BorderSide(color: Color(0xFF7FA6C9)),
           ),
+          contentPadding: EdgeInsets.symmetric(vertical: 10), // <-- Add this line
         ),
       ),
     );
@@ -208,9 +209,9 @@ class _OTPScreenState extends State<OTPScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text(
-                              'Verify',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
+                        'Verify',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   if (_errorMessage != null) ...[
@@ -227,9 +228,9 @@ class _OTPScreenState extends State<OTPScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Text(
-                            "Didn't receive the code? Resend",
-                            style: TextStyle(color: Colors.white70),
-                          ),
+                      "Didn't receive the code? Resend",
+                      style: TextStyle(color: Colors.white70),
+                    ),
                   )
                 ],
               ),

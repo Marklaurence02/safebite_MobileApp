@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/user_service.dart';
 
 // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-const String baseUrl = 'http://192.168.16.100:3000/api';
+const String baseUrl = 'http://192.168.100.128:3000/api';
 // Base URL for the Express backend when running on a website or local browser
 const String websiteBaseUrl = 'http://localhost:3000/api';
 
@@ -30,10 +30,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         newPassword: _newPasswordController.text,
       );
       if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Password Reset Successfully!')),
-        );
-        Navigator.of(context).popUntil((route) => route.isFirst);
+      );
+      Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Failed to reset password')),

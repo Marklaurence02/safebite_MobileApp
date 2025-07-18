@@ -18,14 +18,32 @@ const transporter = nodemailer.createTransport({
 // Create a new user
 router.post('/newuser', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { 
+      email, 
+      password, 
+      firstName, 
+      lastName, 
+      username, 
+      contact_number, 
+      acceptTerms, 
+      acceptPrivacy 
+    } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    console.log(req.body)
+
+    if (!email || !password || !firstName || !lastName || !username || !contact_number) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email, password, first name, last name, username, and contact number are required' 
+      });
     }
 
-    // Auto-generate username from email
-    const username = email.split('@')[0];
+    if (!acceptTerms || !acceptPrivacy) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'You must accept both Terms and Conditions and Data Privacy Policy' 
+      });
+    }
 
     // Check if email or username already exists
     const [existingUsers] = await db.query('SELECT * FROM users WHERE email = ? OR username = ?', [email, username]);
@@ -37,10 +55,11 @@ router.post('/newuser', async (req, res) => {
     const password_hash = await bcrypt.hash(password, saltRounds);
 
     const newUser = {
-      first_name: username, // Default first_name to username
-      last_name: 'User',    // Default last_name
+      first_name: firstName,
+      last_name: lastName,
       username,
       email,
+      contact_number,
       password_hash,
     };
     

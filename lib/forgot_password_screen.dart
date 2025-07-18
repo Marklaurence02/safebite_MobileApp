@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
-const String baseUrl = 'http://192.168.16.100:3000/api';
+const String baseUrl = 'http://192.168.100.128:3000/api';
 // Base URL for the Express backend when running on a website or local browser
 const String websiteBaseUrl = 'http://localhost:3000/api';
 
@@ -40,10 +40,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         final data = jsonDecode(response.body);
         if (response.statusCode == 200 && data['success'] == true) {
           // Success: Navigate to OTP screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => OTPScreen(email: _emailController.text)),
-          );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => OTPScreen(email: _emailController.text)),
+      );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(data['error'] ?? 'Failed to send OTP')),
@@ -168,9 +168,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text(
-                              'Send Verification Code',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
+                        'Send Verification Code',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
