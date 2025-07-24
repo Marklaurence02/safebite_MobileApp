@@ -1,3 +1,4 @@
+import com.android.build.gradle.api.ApkVariantOutput
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -41,4 +42,13 @@ android {
 
 flutter {
     source = "../.."
+}
+
+android.applicationVariants.all {
+    if (buildType.name == "release") {
+        outputs.all {
+            val apkOutput = this as? ApkVariantOutput
+            apkOutput?.outputFileName = "SafeBite${versionName}.apk"
+        }
+    }
 }

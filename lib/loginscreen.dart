@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'pages/home.dart'; // Import the home page
 import 'services/user_service.dart';
 import 'forgot_password_screen.dart';
+import 'signupscreen.dart';
 import 'dart:convert';
 import 'services/session_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -293,26 +294,44 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                     ),
                   ),
-                  // Forgot Password?
-                  Container(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                    onPressed: () {
-                        // Navigate to ForgotPasswordScreen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
-                      );
-                    },
-                    child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          decoration: TextDecoration.underline,
+                  // Forgot Password and Sign Up row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          // Navigate to SignUpScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                          );
+                        },
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            decoration: TextDecoration.none,
+                          ),
                         ),
-                    ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Navigate to ForgotPasswordScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
                 const SizedBox(height: 32),
               ],
               ),

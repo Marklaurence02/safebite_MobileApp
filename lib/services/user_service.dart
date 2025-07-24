@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserService {
-  // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
+  // Base URL for the Express backend (use 192.168.100.128 for physical device access)
   static const String baseUrl = 'http://192.168.100.128:3000/api';
   // Base URL for the Express backend when running on a website or local browser
   static const String websiteBaseUrl = 'http://localhost:3000/api';

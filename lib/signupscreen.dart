@@ -30,9 +30,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _hasReadTerms = false;
   bool _hasReadPrivacy = false;
 
-  late TapGestureRecognizer _termsRecognizer;
-  late TapGestureRecognizer _privacyRecognizer;
-
   // Base URL for the Express backend (use 10.0.2.2 for Android emulator)
   static const String baseUrl = 'http://192.168.100.128:3000/api';
   // Base URL for the Express backend when running on a website or local browser
@@ -41,65 +38,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
-    _termsRecognizer = TapGestureRecognizer()
-      ..onTap = () {
-        _showPolicyDialog(
-          'Terms and Conditions',
-          '''Welcome to SafeBite!
-
-By using this application, you agree to the following terms:
-
-1. You will use the app for lawful purposes only.
-2. You are responsible for the accuracy of the information you provide.
-3. SafeBite is not liable for any damages resulting from the use of this app.
-4. You agree not to misuse or attempt to disrupt the service.
-5. These terms may be updated at any time. Continued use of the app means you accept the new terms.
-
-For the full terms, please visit our website or contact support.
-''',
-          () {
-            setState(() {
-              _hasReadTerms = true;
-            });
-          },
-        );
-      };
-    _privacyRecognizer = TapGestureRecognizer()
-      ..onTap = () {
-        _showPolicyDialog(
-          'Data Privacy Policy',
-          '''SafeBite Privacy Policy
-
-We value your privacy. By using this app, you consent to our data practices:
-
-1. We collect your email, username, and contact number for account creation.
-2. Your data is stored securely and is not shared with third parties except as required by law.
-3. You may request deletion of your account and data at any time.
-4. We use your information to provide and improve our services.
-5. This policy may change. Continued use of the app means you accept the new policy.
-
-For more details, please visit our website or contact support.
-''',
-          () {
-            setState(() {
-              _hasReadPrivacy = true;
-            });
-          },
-        );
-      };
   }
 
   @override
   void dispose() {
-    _termsRecognizer.dispose();
-    _privacyRecognizer.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _usernameController.dispose();
-    _phoneNumberController.dispose();
     super.dispose();
   }
 
@@ -121,16 +63,16 @@ For more details, please visit our website or contact support.
       }
 
       final result = await _userService.registerUser(
-  email: _emailController.text.trim(),
-  password: _passwordController.text,
-  confirmPassword: _confirmPasswordController.text,
-  firstName: _firstNameController.text.trim(),
-  lastName: _lastNameController.text.trim(),
-  username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        username: _usernameController.text.trim(),
   contact_number: _phoneNumberController.text.trim(), 
-  acceptTerms: _acceptTerms,
-  acceptPrivacy: _acceptPrivacy,
-);
+        acceptTerms: _acceptTerms,
+        acceptPrivacy: _acceptPrivacy,
+      );
 
       if (result['success']) {
         _showSuccessDialog('Success', result['message']);
@@ -295,57 +237,49 @@ For more details, please visit our website or contact support.
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildIconTextField(
-                                  controller: _firstNameController,
-                                  hint: 'First Name',
-                                  icon: Icons.person,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Enter first name';
-                                    }
-                                    if (!_userService.isValidName(value)) {
-                                      return 'Min 2 letters';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildIconTextField(
-                                  controller: _lastNameController,
-                                  hint: 'Last Name',
-                                  icon: Icons.person,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Enter last name';
-                                    }
-                                    if (!_userService.isValidName(value)) {
-                                      return 'Min 2 letters';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
+                          _buildIconTextField(
+                            controller: _firstNameController,
+                            hint: 'First Name',
+                            icon: Icons.person,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                                  return 'Enter first name';
+                  }
+                                if (!_userService.isValidName(value)) {
+                                  return 'Min 2 letters';
+                  }
+                  return null;
+                },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildIconTextField(
+                            controller: _lastNameController,
+                            hint: 'Last Name',
+                            icon: Icons.person,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                                  return 'Enter last name';
+                  }
+                  if (!_userService.isValidName(value)) {
+                                  return 'Min 2 letters';
+                  }
+                  return null;
+                },
                           ),
                           const SizedBox(height: 16),
                           _buildIconTextField(
                             controller: _usernameController,
                             hint: 'Username',
                             icon: Icons.alternate_email,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
                                 return 'Enter username';
-                              }
+                      }
                               if (!_userService.isValidUsername(value)) {
                                 return 'Min 3 chars, letters/numbers/_';
-                              }
-                              return null;
-                            },
+                      }
+                      return null;
+                    },
                           ),
                           const SizedBox(height: 16),
                           _buildIconTextField(
@@ -353,31 +287,31 @@ For more details, please visit our website or contact support.
                             hint: 'Email',
                             icon: Icons.email,
                             keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
                                 return 'Enter email';
-                              }
+                      }
                               if (!_userService.isValidEmail(value)) {
                                 return 'Invalid email';
-                              }
-                              return null;
-                            },
+                      }
+                      return null;
+                    },
                           ),
                           const SizedBox(height: 16),
                           _buildIconTextField(
-                            controller: _phoneNumberController,
+                    controller: _phoneNumberController,
                             hint: 'Contact Number',
                             icon: Icons.phone,
-                            keyboardType: TextInputType.phone,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
                                 return 'Enter contact number';
-                              }
-                              if (!_userService.isValidPhoneNumber(value)) {
+                      }
+                      if (!_userService.isValidPhoneNumber(value)) {
                                 return 'Invalid number';
-                              }
-                              return null;
-                            },
+                      }
+                      return null;
+                    },
                           ),
                         ],
                       ),
@@ -405,7 +339,7 @@ For more details, please visit our website or contact support.
                           ),
                           const SizedBox(height: 16),
                           _buildIconPasswordField(
-                            controller: _passwordController,
+                    controller: _passwordController,
                             hint: 'New Password',
                             icon: Icons.lock,
                             obscure: _obscurePassword,
@@ -414,15 +348,15 @@ For more details, please visit our website or contact support.
                                 _obscurePassword = !_obscurePassword;
                               });
                             },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
                                 return 'Enter password';
-                              }
-                              if (!_userService.isValidPassword(value)) {
+                      }
+                      if (!_userService.isValidPassword(value)) {
                                 return 'Min 6 characters';
-                              }
-                              return null;
-                            },
+                      }
+                      return null;
+                    },
                           ),
                           const SizedBox(height: 16),
                           _buildIconPasswordField(
@@ -431,19 +365,19 @@ For more details, please visit our website or contact support.
                             icon: Icons.lock,
                             obscure: _obscureConfirmPassword,
                             toggle: () {
-                              setState(() {
+                          setState(() {
                                 _obscureConfirmPassword = !_obscureConfirmPassword;
-                              });
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
+                          });
+                        },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
                                 return 'Confirm password';
-                              }
-                              if (value != _passwordController.text) {
-                                return 'Passwords do not match';
-                              }
-                              return null;
-                            },
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
                           ),
                         ],
                       ),
@@ -474,81 +408,127 @@ For more details, please visit our website or contact support.
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center, // <-- This centers the checkbox with the text
-                              children: [
-                                Checkbox(
-                                  value: _acceptTerms,
+                    children: [
+                      Checkbox(
+                        value: _acceptTerms,
                                   onChanged: _hasReadTerms
                                       ? (bool? value) {
-                                          setState(() {
-                                            _acceptTerms = value ?? false;
-                                          });
+                          setState(() {
+                            _acceptTerms = value ?? false;
+                          });
                                         }
                                       : null,
-                                  activeColor: Color(0xFF7FA6C9),
-                                  checkColor: Colors.white,
+                        activeColor: Color(0xFF7FA6C9),
+                        checkColor: Colors.white,
                                   materialTapTargetSize: MaterialTapTargetSize.padded,
                                   visualDensity: VisualDensity(horizontal: 0, vertical: 0), // optional: default density
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                ),
-                                Expanded(
+                      ),
+                      Expanded(
                                   child: Opacity(
                                     opacity: _hasReadTerms ? 1.0 : 0.5,
-                                    child: RichText(
-                                      text: TextSpan(
+                          child: RichText(
+                            text: TextSpan(
                                         style: TextStyle(color: Color(0xFF003366), fontSize: 14),
-                                        children: [
-                                          TextSpan(text: 'I accept the '),
-                                          TextSpan(
-                                            text: 'Terms and Conditions',
-                                            style: TextStyle(
+                              children: [
+                                TextSpan(text: 'I accept the '),
+                                TextSpan(
+                                  text: 'Terms and Conditions',
+                                  style: TextStyle(
                                               color: Color(0xFF2196F3),
-                                              decoration: TextDecoration.underline,
-                                            ),
-                                            recognizer: _termsRecognizer,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                    decoration: TextDecoration.none,
                                   ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                _showPolicyDialog(
+                                                  'Terms and Conditions',
+                                                  '''Welcome to SafeBite!
+
+By using this application, you agree to the following terms:
+
+1. You will use the app for lawful purposes only.
+2. You are responsible for the accuracy of the information you provide.
+3. SafeBite is not liable for any damages resulting from the use of this app.
+4. You agree not to misuse or attempt to disrupt the service.
+5. These terms may be updated at any time. Continued use of the app means you accept the new terms.
+
+For the full terms, please visit our website or contact support.
+''',
+                                                  () {
+                                                    setState(() {
+                                                      _hasReadTerms = true;
+                                                      _acceptTerms = true;
+                                                    });
+                                                  },
+                                                );
+                                              },
                                 ),
                               ],
                             ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center, // <-- This centers the checkbox with the text
-                              children: [
-                                Checkbox(
-                                  value: _acceptPrivacy,
+                    children: [
+                      Checkbox(
+                        value: _acceptPrivacy,
                                   onChanged: _hasReadPrivacy
                                       ? (bool? value) {
-                                          setState(() {
-                                            _acceptPrivacy = value ?? false;
-                                          });
+                          setState(() {
+                            _acceptPrivacy = value ?? false;
+                          });
                                         }
                                       : null, // disables the checkbox if not read
-                                  activeColor: Color(0xFF7FA6C9),
-                                  checkColor: Colors.white,
+                        activeColor: Color(0xFF7FA6C9),
+                        checkColor: Colors.white,
                                   materialTapTargetSize: MaterialTapTargetSize.padded,
                                   visualDensity: VisualDensity(horizontal: 0, vertical: 0), // optional: default density
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                ),
-                                Expanded(
+                      ),
+                      Expanded(
                                   child: Opacity(
                                     opacity: _hasReadPrivacy ? 1.0 : 0.5,
-                                    child: RichText(
-                                      text: TextSpan(
+                          child: RichText(
+                            text: TextSpan(
                                         style: TextStyle(color: Color(0xFF003366), fontSize: 14),
-                                        children: [
-                                          TextSpan(text: 'I accept the '),
-                                          TextSpan(
-                                            text: 'Data Privacy Policy',
-                                            style: TextStyle(
+                              children: [
+                                TextSpan(text: 'I accept the '),
+                                TextSpan(
+                                  text: 'Data Privacy Policy',
+                                  style: TextStyle(
                                               color: Color(0xFF2196F3),
-                                              decoration: TextDecoration.underline,
+                                    decoration: TextDecoration.none,
                                             ),
-                                            recognizer: _privacyRecognizer,
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () {
+                                                _showPolicyDialog(
+                                                  'Data Privacy Policy',
+                                                  '''SafeBite Privacy Policy
+
+We value your privacy. By using this app, you consent to our data practices:
+
+1. We collect your email, username, and contact number for account creation.
+2. Your data is stored securely and is not shared with third parties except as required by law.
+3. You may request deletion of your account and data at any time.
+4. We use your information to provide and improve our services.
+5. This policy may change. Continued use of the app means you accept the new policy.
+
+For more details, please visit our website or contact support.
+''',
+                                                  () {
+                                                    setState(() {
+                                                      _hasReadPrivacy = true;
+                                                      _acceptPrivacy = true;
+                                                    });
+                                                  },
+                                                );
+                                              },
                                           ),
                                         ],
                                       ),
@@ -563,7 +543,7 @@ For more details, please visit our website or contact support.
                     ),
                   ),
                   const SizedBox(height: 24),
-
+                  
                   // Sign Up Button
                   SizedBox(
                     width: double.infinity,
@@ -592,6 +572,38 @@ For more details, please visit our website or contact support.
                     ),
                   ),
                   const SizedBox(height: 32),
+                  
+                  // Already have an account?
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Already have an account? ',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // Navigate back to LoginScreen
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          );
+                        },
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            color: Color(0xFF7FA6C9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
